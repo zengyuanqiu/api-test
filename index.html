@@ -11,6 +11,7 @@
 		}
 		html, body, #app {
 			height: 100%;
+			overflow: hidden;
 		}
 		.json-view-container {
 		  background-color: #fff;
@@ -141,6 +142,10 @@
 			box-shadow: none;
 		}
 
+		div.el-table__empty-block {
+			display: none;
+		}
+
 		/*.el-tabs--card .el-tabs__item {
 			position: relative;
 			max-width: 200px;
@@ -165,7 +170,7 @@
 		<div id="app">
 			<el-container style="height: 100%">
 			  <el-header style="background: #424242;"></el-header>
-			  <el-container>
+			  <el-container style="overflow:hidden">
 			    <el-aside width="360px" style="border-right: 1px solid #ddd">
 			    	<div class="history-item" v-for="(item, i) in requestHistory"
 			    		@click="historyClick(item)">
@@ -209,7 +214,8 @@
 								    <el-select v-model="item.method"
 								    	slot="prepend" 
 								    	placeholder="请选择" 
-								    	style="width:130px">
+								    	style="width:130px"
+								    	@change="changeMethod($event, item)">
 								      <el-option label="GET" value="get"></el-option>
 								      <el-option label="POST" value="post"></el-option>
 								    </el-select>
@@ -221,10 +227,14 @@
 							  </div>
 							  <el-tabs value="1">
 							    <el-tab-pane label="Headers" name="1">
-							    	<el-table	:data="[{key:'',value:''}]" border>
+							    	<el-table	:data="item.headersTable" border>
 							    		<el-table-column label="KEY">
-							    			<template v-slot="{row}">
-										      <el-input v-model="row.key" size="small" clearable></el-input>
+							    			<template v-slot="{row, $index}">
+										      <el-input v-model="row.key" 
+														:ref="'head-input-' + $index"
+										      	size="small" 
+										      	clearable
+											      autofocus></el-input>
 										    </template>
 							    		</el-table-column>
 							    		<el-table-column label="VALUE">
@@ -233,18 +243,36 @@
 										    </template>
 							    		</el-table-column>
 							    		<el-table-column label='操作' width='80' align="center">
-							    			<!-- <template v-slot="{row, $index}">
-										      <i :class="[row.isDel ? 'el-icon-close' : 'el-icon-plus']" 
-										      	style="font-size: 22px;cursor: pointer;"
-										      	@click="handleParams(row, $index)"></i>
-										    </template> -->
+							    			<template v-slot="{row, $index}">
+											      <i class="el-icon-close" 
+											      	style="font-size: 22px;cursor: pointer;"></i>
+											    </template>
 							    		</el-table-column>
 							    	</el-table>
+							    	<el-table :show-header="false"	
+								    		:data="[item.headerItem]"
+								    		style="border-top:none" 
+								    		border>
+												<el-table-column>
+								    			<template v-slot="{row}">
+											      <el-input 
+											      	v-model="row.key" 
+											      	@input="insertHeader($event, item)"
+											      	size="small" clearable></el-input>
+											    </template>
+								    		</el-table-column>
+								    		<el-table-column>
+								    			<template v-slot="{row, $index}">
+											      <el-input v-model="row.value" size="small" clearable></el-input>
+											    </template>
+								    		</el-table-column>
+								    		<el-table-column width='80'></el-table-column>
+								    	</el-table>
 							    </el-tab-pane>
 							    <el-tab-pane label="Params/Body" name="2">
 							    	<el-radio-group v-model="item.paramType" style="margin-bottom: 15px">
 									    <el-radio label="params"></el-radio>
-									    <el-radio label="body"></el-radio>
+									    <el-radio label="body" :disabled="item.method==='get'"></el-radio>
 						  			</el-radio-group>
 							    	<el-input	
 							    		v-if="item.paramType==='body'"
@@ -252,25 +280,49 @@
 							    		v-model="item.bodyContent"
 							    		:rows="12"
 							    		resize="none"></el-input>
-							    	<el-table v-else :data="[{key:'', value:''}]" border>
-							    		<el-table-column label='key(字段名称)'>
-							    			<template v-slot="{row}">
-										      <el-input v-model="row.key" size="small" clearable></el-input>
-										    </template>
-							    		</el-table-column>
-							    		<el-table-column label='value(字段值)'>
-							    			<template v-slot="{row, $index}">
-										      <el-input v-model="row.value" size="small" clearable></el-input>
-										    </template>
-							    		</el-table-column>
-							    		<el-table-column label='操作' width='80' align="center">
-							    			<!-- <template v-slot="{row, $index}">
-										      <i :class="[row.isDel ? 'el-icon-close' : 'el-icon-plus']" 
-										      	style="font-size: 22px;cursor: pointer;"
-										      	@click="handleParams(row, $index)"></i>
-										    </template> -->
-							    		</el-table-column>
-							    	</el-table>
+							    	<div v-else>
+								    	<el-table :data="[]" border>
+								    		<el-table-column label="KEY">
+								    			<template v-slot="{row}">
+											      <el-input v-model="row.key" size="small" clearable></el-input>
+											    </template>
+								    		</el-table-column>
+								    		<el-table-column label="VALUE">
+								    			<template v-slot="{row, $index}">
+											      <el-input v-model="row.value" size="small" clearable></el-input>
+											    </template>
+								    		</el-table-column>
+								    		<el-table-column label='操作' width='80' align="center">
+								    			<!-- <template v-slot="{row, $index}">
+											      <i :class="[row.isDel ? 'el-icon-close' : 'el-icon-plus']" 
+											      	style="font-size: 22px;cursor: pointer;"
+											      	@click="handleParams(row, $index)"></i>
+											    </template> -->
+								    		</el-table-column>
+								    	</el-table>
+								    	<el-table :show-header="false"	
+								    		:data="[item.paramItem]"
+								    		style="border-top:none" 
+								    		border>
+												<el-table-column>
+								    			<template v-slot="{row}">
+											      <el-input 
+											      	v-model="row.key" 
+											      	@input="insertParam($event, item)"
+											      	size="small" clearable></el-input>
+											    </template>
+								    		</el-table-column>
+								    		<el-table-column>
+								    			<template v-slot="{row, $index}">
+											      <el-input v-model="row.value" size="small" clearable></el-input>
+											    </template>
+								    		</el-table-column>
+								    		<el-table-column width='80'>
+								    			
+								    		</el-table-column>
+								    	</el-table>
+								    </div>
+
 							    </el-tab-pane>
 							  </el-tabs>
 
@@ -559,11 +611,14 @@
 							method: 'get',
 							bodyContent: '',
 							paramType: 'body',
-							paramsTable: [{key: '', value: ''}],
-							headerTable: [
-								{key: 'Content-Type', value: 'application/json'},
-								{key: '', value: ''}
+							paramsTable: [],
+							headersTable: [
+								// {key: 'Content-Type', value: 'application/json'},
+								// {key: '', value: ''}
 							],
+
+							paramItem: {key: '', value: ''},
+							headerItem: {key: '', value: ''},
 
 							jsonData: {key: 'Hello'},
 							loading: false
@@ -574,11 +629,14 @@
 							method: 'post',
 							bodyContent: '',
 							paramType: 'body',
-							paramsTable: [{key: '', value: ''}],
-							headerTable: [
-								{key: 'Content-Type', value: 'application/json'},
-								{key: '', value: ''}
+							paramsTable: [],
+							headersTable: [
+								// {key: 'Content-Type', value: 'application/json'},
+								// {key: '', value: ''}
 							],
+
+							paramItem: {key: '', value: ''},
+							headerItem: {key: '', value: ''},
 
 							jsonData: {key: 'Hello'},
 							loading: false
@@ -588,11 +646,14 @@
 							method: 'get',
 							bodyContent: '',
 							paramType: 'body',
-							paramsTable: [{key: '', value: ''}],
-							headerTable: [
-								{key: 'Content-Type', value: 'application/json'},
-								{key: '', value: ''}
+							paramsTable: [],
+							headersTable: [
+								// {key: 'Content-Type', value: 'application/json'},
+								// {key: '', value: ''}
 							],
+
+							paramItem: {key: '', value: ''},
+							headerItem: {key: '', value: ''},
 
 							jsonData: '',
 							loading: false
@@ -602,11 +663,14 @@
 							method: 'get',
 							bodyContent: '',
 							paramType: 'body',
-							paramsTable: [{key: '', value: ''}],
-							headerTable: [
-								{key: 'Content-Type', value: 'application/json'},
-								{key: '', value: ''}
+							paramsTable: [],
+							headersTable: [
+								// {key: 'Content-Type', value: 'application/json'},
+								// {key: '', value: ''}
 							],
+
+							paramItem: {key: '', value: ''},
+							headerItem: {key: '', value: ''},
 
 							jsonData: '',
 							loading: false
@@ -626,10 +690,6 @@
 					}
 				},
 				methods: {
-					tabClick(tab) {
-						console.log(this.tabIndex)
-					},
-
 					historyClick(item) {
 						let i = this.tabs.findIndex(t => t.url === item.url)
 						if(i === -1) {
@@ -640,6 +700,35 @@
 						
 						//  = '1'
 					},
+					changeMethod(val, item) {
+						if(val === 'get') {
+							item.paramType = 'params'
+						}
+					},
+					tabClick(tab) {
+						console.log(this.tabIndex)
+					},
+
+					insertParam(val, item) {
+						if(val.trim() !== '') {
+							item.paramsTable.push({key: val, value: ''})
+						}
+					},
+
+					insertHeader(val, item) {
+						if(val.trim() !== '') {
+							let l = item.headersTable.length
+							item.headersTable.push({key: val, value: ''})
+							item.headerItem.key = ''
+							item.headerItem.value = ''
+							this.$nextTick(() => {
+								let lastIndex = this.$refs[`head-input-${l}`].length - 1
+								this.$refs[`head-input-${l}`][lastIndex].focus()
+							})
+						}
+					},
+
+					
 
 					delHistory(i) {},
 
