@@ -281,10 +281,13 @@
 							    		:rows="12"
 							    		resize="none"></el-input>
 							    	<div v-else>
-								    	<el-table :data="[]" border>
+								    	<el-table :data="item.paramsTable" border>
 								    		<el-table-column label="KEY">
-								    			<template v-slot="{row}">
-											      <el-input v-model="row.key" size="small" clearable></el-input>
+								    			<template v-slot="{row, $index}">
+											      <el-input v-model="row.key" 
+											      	ref="'param-input-' + $index"
+											      	size="small" 
+											      	clearable></el-input>
 											    </template>
 								    		</el-table-column>
 								    		<el-table-column label="VALUE">
@@ -711,7 +714,14 @@
 
 					insertParam(val, item) {
 						if(val.trim() !== '') {
+							let l = item.paramsTable.length
 							item.paramsTable.push({key: val, value: ''})
+							item.paramItem.key = ''
+							item.paramItem.value = ''
+							this.$nextTick(() => {
+								let lastIndex = this.$refs[`param-input-${l}`].length - 1
+								this.$refs[`param-input-${l}`][lastIndex].focus()
+							})
 						}
 					},
 
