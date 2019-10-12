@@ -164,7 +164,6 @@
 	</style>
 </head>
 <body>
-	<!--  -->
 	<div id="app"></div>
 	<template id="main">
 		<div id="app">
@@ -243,10 +242,11 @@
 										    </template>
 							    		</el-table-column>
 							    		<el-table-column label='操作' width='80' align="center">
-							    			<template v-slot="{row, $index}">
-											      <i class="el-icon-close" 
-											      	style="font-size: 22px;cursor: pointer;"></i>
-											    </template>
+							    			<template v-slot="{$index}">
+										      <i class="el-icon-close" 
+										      	style="font-size: 22px;cursor: pointer;"
+										      	@click="delFields(item, $index, 'headersTable')"></i>
+										    </template>
 							    		</el-table-column>
 							    	</el-table>
 							    	<el-table :show-header="false"	
@@ -255,10 +255,15 @@
 								    		border>
 												<el-table-column>
 								    			<template v-slot="{row}">
-											      <el-input 
+											      <!-- <el-input 
 											      	v-model="row.key" 
 											      	@input="insertHeader($event, item)"
-											      	size="small" clearable></el-input>
+											      	size="small" clearable></el-input> -->
+										      	<el-autocomplete style="width:100%"
+											      	v-model="row.key"
+											      	@input="insertHeader($event, item)"
+											      	:fetch-suggestions="headFields" 
+											      	size="small" clearable></el-autocomplete>
 											    </template>
 								    		</el-table-column>
 								    		<el-table-column>
@@ -285,7 +290,7 @@
 								    		<el-table-column label="KEY">
 								    			<template v-slot="{row, $index}">
 											      <el-input v-model="row.key" 
-											      	ref="'param-input-' + $index"
+											      	:ref="'param-input-' + $index"
 											      	size="small" 
 											      	clearable></el-input>
 											    </template>
@@ -296,11 +301,11 @@
 											    </template>
 								    		</el-table-column>
 								    		<el-table-column label='操作' width='80' align="center">
-								    			<!-- <template v-slot="{row, $index}">
-											      <i :class="[row.isDel ? 'el-icon-close' : 'el-icon-plus']" 
+								    			<template v-slot="{$index}">
+											      <i class="el-icon-close" 
 											      	style="font-size: 22px;cursor: pointer;"
-											      	@click="handleParams(row, $index)"></i>
-											    </template> -->
+											      	@click="delFields(item, $index, 'paramsTable')"></i>
+											    </template>
 								    		</el-table-column>
 								    	</el-table>
 								    	<el-table :show-header="false"	
@@ -452,10 +457,12 @@
     </div>
 	</template>
 	<script src="https://cdn.jsdelivr.net/npm/vue@2.6.1"></script>
-	<!-- 引入组件库 -->
+
 	<script src="https://unpkg.com/element-ui/lib/index.js"></script>
 	<script type="text/javascript">
 		!function() {
+			['Cookie', 'User-Agent', 'Content-Type', 'Host', 'Authorization', 
+			'Referer', 'Accept-Charset', 'Accept-Encoding', 'token']
 			var JsonView = {
 			  template: '#json-view',
 			  name: 'jsonView',
@@ -693,6 +700,13 @@
 					}
 				},
 				methods: {
+					headFields(query, cb) {
+						cb([
+							{value: 'Content-Type'},
+							{value: 'token'},
+							{value: 'Authorization'}
+						])
+					},
 					historyClick(item) {
 						let i = this.tabs.findIndex(t => t.url === item.url)
 						if(i === -1) {
@@ -749,6 +763,11 @@
 						if(index < currentIndex) {
 							this.tabIndex = String(currentIndex - 1)
 						}
+					},
+
+					// 删除字段
+					delFields(item, i, key) {
+						item[key].splice(i, 1)
 					}
 				}
 			}
