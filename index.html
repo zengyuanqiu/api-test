@@ -214,7 +214,6 @@
 			    		v-model="tabIndex" 
 			    		type="card" 
 			    		editable 
-			    		@tab-click='tabClick'
 			    		@tab-add="addTab"
 			    		@tab-remove="delTab">
 						  <el-tab-pane
@@ -711,9 +710,9 @@
 					},
 
 					// 
-					tabClick(tab) {
-						console.log(this.tabIndex)
-					},
+					// tabClick(tab) {
+					// 	console.log(this.tabIndex)
+					// },
 
 					// 输入自动插入字段
 					insertParam(val, item) {
