@@ -14,16 +14,15 @@ app.use('/proxy', (req, res) => {
 	res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Content-Length, Authorization, Accept, X-Requested-With , yourHeaderFeild');
     res.header('Access-Control-Allow-Methods', 'PUT, POST, GET, DELETE, OPTIONS');
-    
+    count++
+    console.log('访问次数：' + count)
     let { body } = req
     if(!body.url) return res.send({error: 'Not find'})
  	axios(body).then(result => {
  		res.send(result.data)
  	}).catch(err => {
- 		res.send(err)
+ 		res.send({error: err.message})
  	})
-    count++
-    console.log('访问次数：' + count)
 })
 app.listen(3002, function() {
 	console.log('running success to localhost:3002')
