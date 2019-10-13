@@ -146,6 +146,14 @@
 			display: none;
 		}
 
+		.empty-history:after {
+			content: '历史记录为空，请开始您的请求之旅';
+			display: block;
+			padding-top: 120px;
+			text-align: center;
+			color: #999;
+		}
+
 		/*.el-tabs--card .el-tabs__item {
 			position: relative;
 			max-width: 200px;
@@ -170,7 +178,8 @@
 			<el-container style="height: 100%">
 			  <el-header style="background: #424242;"></el-header>
 			  <el-container style="overflow:hidden">
-			    <el-aside width="360px" style="border-right: 1px solid #ddd">
+			    <el-aside width="360px" style="border-right: 1px solid #ddd"
+			    	:class="{'empty-history': requestHistory.length === 0}">
 			    	<div class="history-item" v-for="(item, i) in requestHistory"
 			    		@click="historyClick(item)">
 			    		<span :class="['method', item.method]">{{item.method | method2UpperCase}}</span>
@@ -199,7 +208,11 @@
 			    <el-main>
 			    	<el-tabs 
 			    		v-show="tabs.length"
-			    		v-model="tabIndex" type="card" closable @tab-click='tabClick'
+			    		v-model="tabIndex" 
+			    		type="card" 
+			    		editable 
+			    		@tab-click='tabClick'
+			    		@tab-add="addTab"
 			    		@tab-remove="delTab">
 						  <el-tab-pane
 						  	v-for="(item, i) in tabs"
@@ -220,127 +233,130 @@
 								    </el-select>
 								  </el-input>
 								  <el-button-group style="margin-left: 12px">
-								  	<el-button type="primary">发送</el-button>
+								  	<el-button type="primary" @click="submitRequest(item)">发送</el-button>
 								  	<el-button type="success">保存</el-button>
 								  </el-button-group>
 							  </div>
-							  <el-tabs value="1">
-							    <el-tab-pane label="Headers" name="1">
-							    	<el-table	:data="item.headersTable" border>
-							    		<el-table-column label="KEY">
-							    			<template v-slot="{row, $index}">
-										      <el-input v-model="row.key" 
-														:ref="'head-input-' + $index"
-										      	size="small" 
-										      	clearable
-											      autofocus></el-input>
-										    </template>
-							    		</el-table-column>
-							    		<el-table-column label="VALUE">
-							    			<template v-slot="{row, $index}">
-										      <el-input v-model="row.value" size="small" clearable></el-input>
-										    </template>
-							    		</el-table-column>
-							    		<el-table-column label='操作' width='80' align="center">
-							    			<template v-slot="{$index}">
-										      <i class="el-icon-close" 
-										      	style="font-size: 22px;cursor: pointer;"
-										      	@click="delFields(item, $index, 'headersTable')"></i>
-										    </template>
-							    		</el-table-column>
-							    	</el-table>
-							    	<el-table :show-header="false"	
-								    		:data="[item.headerItem]"
-								    		style="border-top:none" 
-								    		border>
-												<el-table-column>
-								    			<template v-slot="{row}">
-											      <!-- <el-input 
-											      	v-model="row.key" 
-											      	@input="insertHeader($event, item)"
-											      	size="small" clearable></el-input> -->
-										      	<el-autocomplete style="width:100%"
-											      	v-model="row.key"
-											      	@input="insertHeader($event, item)"
-											      	:fetch-suggestions="headFields" 
-											      	size="small" clearable></el-autocomplete>
-											    </template>
-								    		</el-table-column>
-								    		<el-table-column>
-								    			<template v-slot="{row, $index}">
-											      <el-input v-model="row.value" size="small" clearable></el-input>
-											    </template>
-								    		</el-table-column>
-								    		<el-table-column width='80'></el-table-column>
-								    	</el-table>
-							    </el-tab-pane>
-							    <el-tab-pane label="Params/Body" name="2">
-							    	<el-radio-group v-model="item.paramType" style="margin-bottom: 15px">
-									    <el-radio label="params"></el-radio>
-									    <el-radio label="body" :disabled="item.method==='get'"></el-radio>
-						  			</el-radio-group>
-							    	<el-input	
-							    		v-if="item.paramType==='body'"
-							    		type="textarea" 
-							    		v-model="item.bodyContent"
-							    		:rows="12"
-							    		resize="none"></el-input>
-							    	<div v-else>
-								    	<el-table :data="item.paramsTable" border>
-								    		<el-table-column label="KEY">
-								    			<template v-slot="{row, $index}">
-											      <el-input v-model="row.key" 
-											      	:ref="'param-input-' + $index"
-											      	size="small" 
-											      	clearable></el-input>
-											    </template>
-								    		</el-table-column>
-								    		<el-table-column label="VALUE">
-								    			<template v-slot="{row, $index}">
-											      <el-input v-model="row.value" size="small" clearable></el-input>
-											    </template>
-								    		</el-table-column>
-								    		<el-table-column label='操作' width='80' align="center">
-								    			<template v-slot="{$index}">
-											      <i class="el-icon-close" 
-											      	style="font-size: 22px;cursor: pointer;"
-											      	@click="delFields(item, $index, 'paramsTable')"></i>
-											    </template>
-								    		</el-table-column>
-								    	</el-table>
-								    	<el-table :show-header="false"	
-								    		:data="[item.paramItem]"
-								    		style="border-top:none" 
-								    		border>
-												<el-table-column>
-								    			<template v-slot="{row}">
-											      <el-input 
-											      	v-model="row.key" 
-											      	@input="insertParam($event, item)"
-											      	size="small" clearable></el-input>
-											    </template>
-								    		</el-table-column>
-								    		<el-table-column>
-								    			<template v-slot="{row, $index}">
-											      <el-input v-model="row.value" size="small" clearable></el-input>
-											    </template>
-								    		</el-table-column>
-								    		<el-table-column width='80'>
-								    			
-								    		</el-table-column>
-								    	</el-table>
-								    </div>
+							  <el-collapse :value="['1', '2']" style="border: none">
+								  <el-collapse-item title="Request" name="1">
+										<el-tabs value="1">
+									    <el-tab-pane label="Headers" name="1">
+									    	<el-table	:data="item.headersTable" border>
+									    		<el-table-column label="KEY">
+									    			<template v-slot="{row, $index}">
+												      <el-input v-model="row.key" 
+																:ref="'head-input-' + $index"
+												      	size="small" 
+												      	clearable
+													      autofocus></el-input>
+												    </template>
+									    		</el-table-column>
+									    		<el-table-column label="VALUE">
+									    			<template v-slot="{row, $index}">
+												      <el-input v-model="row.value" size="small" clearable></el-input>
+												    </template>
+									    		</el-table-column>
+									    		<el-table-column label='操作' width='80' align="center">
+									    			<template v-slot="{$index}">
+												      <i class="el-icon-close" 
+												      	style="font-size: 22px;cursor: pointer;"
+												      	@click="delFields(item, $index, 'headersTable')"></i>
+												    </template>
+									    		</el-table-column>
+									    	</el-table>
+									    	<el-table :show-header="false"	
+										    		:data="[item.headerItem]"
+										    		style="border-top:none" 
+										    		border>
+														<el-table-column>
+										    			<template v-slot="{row}">
+													      <!-- <el-input 
+													      	v-model="row.key" 
+													      	@input="insertHeader($event, item)"
+													      	size="small" clearable></el-input> -->
+												      	<el-autocomplete style="width:100%"
+													      	v-model="row.key"
+													      	@input="insertHeader($event, item)"
+													      	:fetch-suggestions="headFields" 
+													      	size="small" clearable></el-autocomplete>
+													    </template>
+										    		</el-table-column>
+										    		<el-table-column>
+										    			<template v-slot="{row, $index}">
+													      <el-input v-model="row.value" size="small" clearable></el-input>
+													    </template>
+										    		</el-table-column>
+										    		<el-table-column width='80'></el-table-column>
+										    	</el-table>
+									    </el-tab-pane>
+									    <el-tab-pane label="Params/Body" name="2">
+									    	<el-radio-group v-model="item.paramType" style="margin-bottom: 15px">
+											    <el-radio label="params"></el-radio>
+											    <el-radio label="body" :disabled="item.method==='get'"></el-radio>
+								  			</el-radio-group>
+									    	<el-input	
+									    		v-if="item.paramType==='body'"
+									    		type="textarea" 
+									    		v-model="item.bodyContent"
+									    		placeholder="内容必须为严格的JSON格式"
+									    		:rows="12"
+									    		resize="none"></el-input>
+									    	<div v-else>
+										    	<el-table :data="item.paramsTable" border>
+										    		<el-table-column label="KEY">
+										    			<template v-slot="{row, $index}">
+													      <el-input v-model="row.key" 
+													      	:ref="'param-input-' + $index"
+													      	size="small" 
+													      	clearable></el-input>
+													    </template>
+										    		</el-table-column>
+										    		<el-table-column label="VALUE">
+										    			<template v-slot="{row, $index}">
+													      <el-input v-model="row.value" size="small" clearable></el-input>
+													    </template>
+										    		</el-table-column>
+										    		<el-table-column label='操作' width='80' align="center">
+										    			<template v-slot="{$index}">
+													      <i class="el-icon-close" 
+													      	style="font-size: 22px;cursor: pointer;"
+													      	@click="delFields(item, $index, 'paramsTable')"></i>
+													    </template>
+										    		</el-table-column>
+										    	</el-table>
+										    	<el-table :show-header="false"	
+										    		:data="[item.paramItem]"
+										    		style="border-top:none" 
+										    		border>
+														<el-table-column>
+										    			<template v-slot="{row}">
+													      <el-input 
+													      	v-model="row.key" 
+													      	@input="insertParam($event, item)"
+													      	size="small" clearable></el-input>
+													    </template>
+										    		</el-table-column>
+										    		<el-table-column>
+										    			<template v-slot="{row, $index}">
+													      <el-input v-model="row.value" size="small" clearable></el-input>
+													    </template>
+										    		</el-table-column>
+										    		<el-table-column width='80'>
+										    			
+										    		</el-table-column>
+										    	</el-table>
+										    </div>
 
-							    </el-tab-pane>
-							  </el-tabs>
-
-							  <div style="margin-top:10px;">
-									<h4 style="padding:5px 0 12px">响应数据</h4>
-									<div style="padding:10px;max-height:600px;min-height:120px;overflow-y:auto;border:1px solid #E4E7ED"
-										v-loading="item.loading" element-loading-text="拼命请求中...">
-										<json-view v-show='item.jsonData' :data="item.jsonData" :deep='2'></json-view>
-									</div>
-								</div>
+									    </el-tab-pane>
+									  </el-tabs>
+								  </el-collapse-item>
+								  <el-collapse-item title="Response" name="2">
+									  <div style="padding:10px;max-height:600px;min-height:120px;overflow-y:auto;border:1px solid #E4E7ED"
+											v-loading="item.loading" element-loading-text="拼命请求中...">
+											<json-view v-show='item.jsonData' :data="item.jsonData"></json-view>
+										</div>
+								  </el-collapse-item>
+								</el-collapse>
 						  </el-tab-pane>
 						</el-tabs>
 			    </el-main>
@@ -459,10 +475,39 @@
 	<script src="https://cdn.jsdelivr.net/npm/vue@2.6.1"></script>
 
 	<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+	<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 	<script type="text/javascript">
 		!function() {
-			['Cookie', 'User-Agent', 'Content-Type', 'Host', 'Authorization', 
-			'Referer', 'Accept-Charset', 'Accept-Encoding', 'token']
+			// ['Cookie', 'User-Agent', 'Content-Type', 'Host', 'Authorization', 
+			// 'Referer', 'Accept-Charset', 'Accept-Encoding', 'token']
+
+			function getStorage(key) {
+				return JSON.parse(localStorage.getItem(key))
+			}
+			function setStorage(key, value) {
+				localStorage.setItem(key, JSON.stringify(value))
+			}
+
+			function cloneData(data) {
+				return JSON.parse(JSON.stringify(data))
+			}
+
+			function newTab() {
+				return {
+					name: 'New Api',
+					url: '',
+					method: 'get',
+					paramType: 'params',
+					bodyContent: '',
+					paramsTable: [],
+					headersTable: [],
+					paramItem: { key: '', value: '' },
+					headerItem: { key: '', value: '' },
+					jsonData: '',
+					loading: false
+				}
+			}
+
 			var JsonView = {
 			  template: '#json-view',
 			  name: 'jsonView',
@@ -615,77 +660,8 @@
 				components: { JsonView },
 				data() {
 					return {
-						requestHistory: [{
-							name: 'https://apizza.net/pro/#/project/fb6dac730cc0d954f2bc376ea17039c7/browse',
-							url: 'https://apizza.net/pro/#/project/fb6dac730cc0d954f2bc376ea17039c7/browse',
-							method: 'get',
-							bodyContent: '',
-							paramType: 'body',
-							paramsTable: [],
-							headersTable: [
-								// {key: 'Content-Type', value: 'application/json'},
-								// {key: '', value: ''}
-							],
-
-							paramItem: {key: '', value: ''},
-							headerItem: {key: '', value: ''},
-
-							jsonData: {key: 'Hello'},
-							loading: false
-						}],
-						tabs: [{
-							name: 'https://apizza.net/pro/#/project/fb6dac730cc0d954f2bc376ea17039c7/browse',
-							url: 'https://apizza.net/pro/#/project/fb6dac730cc0d954f2bc376ea17039c7/browse',
-							method: 'post',
-							bodyContent: '',
-							paramType: 'body',
-							paramsTable: [],
-							headersTable: [
-								// {key: 'Content-Type', value: 'application/json'},
-								// {key: '', value: ''}
-							],
-
-							paramItem: {key: '', value: ''},
-							headerItem: {key: '', value: ''},
-
-							jsonData: {key: 'Hello'},
-							loading: false
-						},{
-							name: 'bbb',
-							url: 'b',
-							method: 'get',
-							bodyContent: '',
-							paramType: 'body',
-							paramsTable: [],
-							headersTable: [
-								// {key: 'Content-Type', value: 'application/json'},
-								// {key: '', value: ''}
-							],
-
-							paramItem: {key: '', value: ''},
-							headerItem: {key: '', value: ''},
-
-							jsonData: '',
-							loading: false
-						},{
-							name: 'ccc',
-							url: 'c',
-							method: 'get',
-							bodyContent: '',
-							paramType: 'body',
-							paramsTable: [],
-							headersTable: [
-								// {key: 'Content-Type', value: 'application/json'},
-								// {key: '', value: ''}
-							],
-
-							paramItem: {key: '', value: ''},
-							headerItem: {key: '', value: ''},
-
-							jsonData: '',
-							loading: false
-						}],
-
+						requestHistory: getStorage('RH') || [],
+						tabs: [ newTab() ],
 						tabIndex: '0'
 					}
 				},
@@ -699,68 +675,131 @@
 						return v.slice(0, 21) + '...'
 					}
 				},
+				created() {
+
+				},
 				methods: {
+					// 头部字段选择列表（ElementUI属性值）
 					headFields(query, cb) {
 						cb([
 							{value: 'Content-Type'},
-							{value: 'token'},
+							{value: 'Cookie'},
 							{value: 'Authorization'}
 						])
 					},
+
+					// 点击历史记录
 					historyClick(item) {
 						let i = this.tabs.findIndex(t => t.url === item.url)
 						if(i === -1) {
-							this.tabs.push(item)
+							this.tabs.push(cloneData(item))
+							this.tabIndex = String(this.tabs.length - 1)
 						}else {
 							this.tabIndex = String(i)
 						}
-						
-						//  = '1'
 					},
+
+					// 更改请求方式
 					changeMethod(val, item) {
-						if(val === 'get') {
+						if(val === 'get') { // get请求只能用params发送数据给服务器
 							item.paramType = 'params'
 						}
 					},
+
+					// 
 					tabClick(tab) {
 						console.log(this.tabIndex)
 					},
 
+					// 输入自动插入字段
 					insertParam(val, item) {
-						if(val.trim() !== '') {
-							let l = item.paramsTable.length
-							item.paramsTable.push({key: val, value: ''})
-							item.paramItem.key = ''
-							item.paramItem.value = ''
-							this.$nextTick(() => {
-								let lastIndex = this.$refs[`param-input-${l}`].length - 1
-								this.$refs[`param-input-${l}`][lastIndex].focus()
-							})
-						}
+						if(val.trim() === '') return
+						let l = item.paramsTable.length
+						item.paramsTable.push({key: val, value: item.paramItem.value})
+						item.paramItem.key = ''
+						item.paramItem.value = ''
+						this.$nextTick(() => {
+							let lastIndex = this.$refs[`param-input-${l}`].length - 1
+							this.$refs[`param-input-${l}`][lastIndex].focus()
+						})
 					},
 
+					// 输入自动插入头部信息
 					insertHeader(val, item) {
-						if(val.trim() !== '') {
-							let l = item.headersTable.length
-							item.headersTable.push({key: val, value: ''})
-							item.headerItem.key = ''
-							item.headerItem.value = ''
-							this.$nextTick(() => {
-								let lastIndex = this.$refs[`head-input-${l}`].length - 1
-								this.$refs[`head-input-${l}`][lastIndex].focus()
-							})
-						}
+						if(val.trim() === '') return
+						let l = item.headersTable.length
+						item.headersTable.push({key: val, value: item.headerItem.value})
+						item.headerItem.key = ''
+						item.headerItem.value = ''
+						this.$nextTick(() => {
+							let lastIndex = this.$refs[`head-input-${l}`].length - 1
+							this.$refs[`head-input-${l}`][lastIndex].focus()
+						})
 					},
 
-					
+					// 获取发送的参数数据
+					getParams(item) {
+						let json2formData = json => Object.keys(json).map(k => `${k}=${json[k]}`).join('&')
+						let getData = list => list.reduce((ret, item) => {
 
-					delHistory(i) {},
+							// 可扩展一个必填的属性
+							if(item.key.trim() !== '') {
+								ret[item.key] = item.value
+							}
+							return ret
+						}, {})
+						let {method, bodyContent, paramType, paramsTable, headersTable} = item
+						try {
+							if(paramType === 'body') {
+								bodyContent = bodyContent.trim() === '' ? {} : JSON.parse(bodyContent)
+							}
+						} catch(err) {
+							this.$message.error('请求体中(body)的内容必须为严格的JSON格式')
+							return false
+						}
 
+						return paramType === 'body' 
+							? bodyContent
+							: method === 'get'
+								? getData(paramsTable)
+								: json2formData(getData(paramsTable))
+					},
+
+					// 获取Headers信息
+					getHeaders({headersTable}) {
+						return headersTable.reduce((ret, item) => {
+
+							// 可扩展一个必填的属性
+							if(item.key.trim() !== '') {
+								ret[item.key] = item.value
+							}
+							return ret
+						}, {})
+					},
+
+					// 删除历史记录
+					delHistory(i) {
+						this.requestHistory.splice(i, 1)
+						setStorage('RH', this.requestHistory)
+					},
+
+					// 添加新请求(添加tab)
+					addTab() {
+						this.tabs.push(newTab())
+						this.tabIndex = String(this.tabs.length - 1)
+					},
+
+					// 删除tab菜单
 					delTab(name) {
 						let currentIndex = Number(this.tabIndex)
 						let index = Number(name)
-						this.tabs.splice(index, 1)
-						if(index < currentIndex) {
+						let l = this.tabs.length
+						l === 1 
+							? this.tabs.splice(index, 1, newTab())
+							: this.tabs.splice(index, 1)
+						
+						// 删除项小于当前项或者删除的项是当前项且是最后一项且项目数量大于1，就把当前项目索引设置为前一项
+						if(index < currentIndex || (l > 1 && index === l - 1 && index === currentIndex)) {
 							this.tabIndex = String(currentIndex - 1)
 						}
 					},
@@ -768,6 +807,34 @@
 					// 删除字段
 					delFields(item, i, key) {
 						item[key].splice(i, 1)
+					},
+
+					// 存储新请求到本地
+					cacheRequest(item) {
+						let isNewApi = !this.requestHistory.some(it => it.url === item.url)
+						if(isNewApi) {
+							this.requestHistory.push(cloneData(item))
+						}
+						setStorage('RH', this.requestHistory)
+					},
+
+					// 提交请求
+					submitRequest(item) {
+						if(item.url.trim() === '') return this.$message('请输入接口地址！')
+						item.name = item.url
+						this.cacheRequest(item)
+						let params = this.getParams(item)
+						let headers = this.getHeaders(item)
+						let { url, method } = item
+						let options = { url, method, headers }
+						options[method === 'get' ? 'params' : 'data'] = params
+						item.loading = true
+						axios.post('http://zengyuanqiu.oicp.io:14017/proxy', options)
+							.then(res => {
+								item.jsonData = res.data
+								item.loading = false
+							})
+							// .catch(err => item.jsonData = {err})
 					}
 				}
 			}
