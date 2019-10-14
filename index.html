@@ -15,6 +15,28 @@
 			height: 100%;
 			overflow: hidden;
 		}
+		/* 滚动槽 */
+		::-webkit-scrollbar {
+		  width: 6px;
+		  height: 6px;
+		}
+
+		::-webkit-scrollbar-track {
+		  border-radius: 3px;
+		  background: rgba(0, 0, 0, 0);
+		  -webkit-box-shadow: inset 0 0 5px rgba(0, 0, 0, .08);
+		  box-shadow: inset 0 0 5px rgba(0, 0, 0, .08);
+		}
+
+		/* 滚动条滑块 */
+		::-webkit-scrollbar-thumb {
+		  border-radius: 3px;
+		  background: #e9ebf4;
+		  -webkit-box-shadow: inset 0 0 10px rgba(0, 0, 0, .2);
+		  box-shadow: inset 0 0 5px rgba(0, 0, 0, .08);
+		}
+
+		/* 数据展示样式 */
 		.json-view-container {
 		  background-color: #fff;
 		}
@@ -127,8 +149,11 @@
 			right: 0;
 			padding: 0 10px;
 		}
-		.history-item:hover {
+		.history-item.active {
 			background: #ECF5FF;
+		}
+		.history-item:hover {
+			background: rgb(226, 235, 245)
 		}
 		.history-item:hover .btn-box {
 			display: flex;
@@ -184,7 +209,8 @@
 			    <el-aside width="360px" style="border-right: 1px solid #ddd"
 			    	:class="{'empty-history': requestHistory.length === 0}">
 			    	<div class="history-item" v-for="(item, i) in requestHistory"
-			    		@click="historyClick(item)">
+			    		:class="{'active': historyIndex === i}" 
+			    		@click="historyClick(item, i)">
 			    		<span :class="['method', item.method]">{{item.method | method2UpperCase}}</span>
 			    		<div class="name" 
 			    			style="flex:1;word-break: break-all;white-space: normal;color:#666">
@@ -209,6 +235,7 @@
 			    	</div>
 			    </el-aside>
 			    <el-main>
+			    	<!-- @tab-click="collapseNames=['1', '2']" -->
 			    	<el-tabs 
 			    		v-show="tabs.length"
 			    		v-model="tabIndex" 
@@ -240,7 +267,7 @@
 								  	<el-button type="success">保存</el-button>
 								  </el-button-group>
 							  </div>
-							  <el-collapse :value="['1', '2']" style="border: none">
+							  <el-collapse v-model="collapseNames" style="border: none">
 								  <el-collapse-item title="Request" name="1">
 										<el-tabs value="1">
 									    <el-tab-pane label="Headers" name="1">
@@ -665,6 +692,8 @@
 					return {
 						requestHistory: getStorage('RH') || [],
 						tabs: [ newTab() ],
+						collapseNames: ['1', '2'],
+						historyIndex: -1,
 						tabIndex: '0'
 					}
 				},
@@ -692,7 +721,8 @@
 					},
 
 					// 点击历史记录
-					historyClick(item) {
+					historyClick(item, index) {
+						this.historyIndex = index
 						let i = this.tabs.findIndex(t => t.url === item.url)
 						if(i === -1) {
 							this.tabs.push(cloneData(item))
@@ -708,11 +738,6 @@
 							item.paramType = 'params'
 						}
 					},
-
-					// 
-					// tabClick(tab) {
-					// 	console.log(this.tabIndex)
-					// },
 
 					// 输入自动插入字段
 					insertParam(val, item) {
@@ -815,9 +840,11 @@
 					// 存储/更新请求
 					cacheRequest(item) {
 						let i = this.requestHistory.findIndex(it => it.url === item.url)
+						let cloneItem = cloneData(item)
+						cloneItem.jsonData = ''
 						i === -1 
-							? this.requestHistory.push(cloneData(item))
-							: this.requestHistory.splice(i, 1, cloneData(item))
+							? this.requestHistory.push(cloneItem)
+							: this.requestHistory.splice(i, 1, cloneItem)
 						setStorage('RH', this.requestHistory)
 					},
 
@@ -833,8 +860,10 @@
 						let options = { url, method, headers }
 						options[method === 'get' ? 'params' : 'data'] = params
 						item.loading = true
-						axios.post('/proxy', options)
-							.then(res => {
+						axios.post(
+							location.port === '3002' ? '/proxy' : 'http://zengyuanqiu.xicp.io/proxy', 
+							options
+						).then(res => {
 								item.jsonData = res.data
 								item.loading = false
 							})
