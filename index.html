@@ -827,12 +827,13 @@
 						item.name = item.url
 						this.cacheRequest(item)
 						let params = this.getParams(item)
+						if(!params) return
 						let headers = this.getHeaders(item)
 						let { url, method } = item
 						let options = { url, method, headers }
 						options[method === 'get' ? 'params' : 'data'] = params
 						item.loading = true
-						axios.post('http://zengyuanqiu.xicp.io/proxy', options)
+						axios.post('/proxy', options)
 							.then(res => {
 								item.jsonData = res.data
 								item.loading = false
