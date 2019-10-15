@@ -264,7 +264,8 @@
 						  <el-tab-pane
 						  	v-for="(item, i) in tabs"
 						    :label="item.name | handleTabTitle"
-						    :name="`${i}`">
+						    :name="`${i}`"
+						    :key="i">
 							  <div style="display: flex">
 									<div style="flex:1">
 									  <el-input v-model="item.url"
@@ -327,7 +328,7 @@
 													      	size="small" clearable></el-input> -->
 												      	<el-autocomplete style="width:100%"
 													      	v-model="row.key"
-													      	@input="insertHeader($event, item)"
+													      	@input="insertHeader"
 													      	:fetch-suggestions="headFields" 
 													      	size="small" clearable></el-autocomplete>
 													    </template>
@@ -383,7 +384,7 @@
 										    			<template v-slot="{row}">
 													      <el-input 
 													      	v-model="row.key" 
-													      	@input="insertParam($event, item)"
+													      	@input="insertParam"
 													      	size="small" clearable></el-input>
 													    </template>
 										    		</el-table-column>
@@ -404,7 +405,7 @@
 								  <el-collapse-item title="Response" name="2">
 									  <div style="padding:10px;min-height:120px;border:1px solid #E4E7ED"
 											v-loading="item.loading" element-loading-text="拼命请求中...">
-											<json-view v-show='item.jsonData' :data="item.jsonData"></json-view>
+											<json-view v-if='item.jsonData' :data="item.jsonData"></json-view>
 										</div>
 								  </el-collapse-item>
 								</el-collapse>
@@ -526,8 +527,9 @@
       </div>
     </div>
 	</template>
-	<script src="https://cdn.jsdelivr.net/npm/vue@2.6.1"></script>
-
+	<!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.6.10"></script> -->
+	
+	<script src="https://unpkg.com/vue@2.6.10/dist/vue.min.js"></script>
 	<script src="https://unpkg.com/element-ui/lib/index.js"></script>
 	<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 	<script type="text/javascript">
@@ -811,25 +813,31 @@
 					},
 
 					// 输入自动插入字段
-					insertParam(val, item) {
+					insertParam(val) {
 						if(val.trim() === '') return
-						let l = item.paramsTable.length
-						item.paramsTable.push({key: val, value: item.paramItem.value})
-						item.paramItem.key = ''
-						item.paramItem.value = ''
+						let curItem = this.tabs[this.tabIndex]
+						let l = curItem.paramsTable.length
+						curItem.paramsTable.push({key: val, value: curItem.paramItem.value})
+						curItem.paramItem.key = ''
+						curItem.paramItem.value = ''
+						this.tabs.splice(Number(this.tabIndex), 1, curItem)
+						
 						this.$nextTick(() => {
+							console.log(this.$refs[`param-input-${l}`])
 							let lastIndex = this.$refs[`param-input-${l}`].length - 1
 							this.$refs[`param-input-${l}`][lastIndex].focus()
 						})
 					},
 
 					// 输入自动插入头部信息
-					insertHeader(val, item) {
+					insertHeader(val) {
 						if(val.trim() === '') return
-						let l = item.headersTable.length
-						item.headersTable.push({key: val, value: item.headerItem.value})
-						item.headerItem.key = ''
-						item.headerItem.value = ''
+						let curItem = this.tabs[this.tabIndex]
+						let l = curItem.headersTable.length
+						curItem.headersTable.push({key: val, value: curItem.headerItem.value})
+						curItem.headerItem.key = ''
+						curItem.headerItem.value = ''
+						this.tabs.splice(Number(this.tabIndex), 1, curItem)
 						this.$nextTick(() => {
 							let lastIndex = this.$refs[`head-input-${l}`].length - 1
 							this.$refs[`head-input-${l}`][lastIndex].focus()
@@ -880,15 +888,12 @@
 					delHistory(i) {
 						this.requestHistory.splice(i, 1)
 						setStorage('RH', this.requestHistory)
-						let { url } = this.tabs[this.tabIndex]
-						// this.historyIndex = this.requestHistory.findIndex(item => item.url === url)
 					},
 
 					// 添加新请求(添加tab)
 					addTab() {
 						this.tabs.push(newTab())
 						this.tabIndex = String(this.tabs.length - 1)
-						// this.historyIndex = -1
 					},
 
 					// 删除tab菜单
@@ -898,12 +903,13 @@
 						let l = this.tabs.length
 						l === 1 
 							? this.tabs.splice(index, 1, newTab())
-							: this.tabs.splice(index, 1)
+							: this.tabs.splice(Number(name), 1)
 						
 						// 删除项小于当前项或者删除的项是当前项且是最后一项且项目数量大于1，就把当前项目索引设置为前一项
 						if(index < currentIndex || (l > 1 && index === l - 1 && index === currentIndex)) {
 							this.tabIndex = String(currentIndex - 1)
 						}
+						console.log(this.tabIndex, this.tabs[this.tabIndex])
 					},
 
 					// 删除字段
