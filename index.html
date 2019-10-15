@@ -123,7 +123,7 @@
 			position: relative;
 			display: flex;
 			align-items: center;
-			padding: 8px;
+			padding: 12px;
 			font-size: 12px;
 			cursor: pointer;
 		}
@@ -196,6 +196,24 @@
 
 		}*/
 		
+		.demo-btn {
+			position: fixed;
+			left: 150px;
+			bottom: 80px;
+			width: 60px;
+			height: 60px;
+			z-index: 2;
+			border-radius: 50%;
+			text-align: center;
+			line-height: 60px;
+			color: #fff;
+			background: #409eff;
+			cursor: pointer;
+		}
+		.demo-btn:hover {
+			background: #66b1ff
+		}
+
 	</style>
 </head>
 <body>
@@ -231,14 +249,13 @@
 					    			d="M725.333333 128H213.333333c-47.146667 0-85.333333 38.186667-85.333333 85.333333v597.333334c0 47.146667 38.186667 85.333333 85.333333 85.333333h597.333334c47.146667 0 85.333333-38.186667 85.333333-85.333333V298.666667l-170.666667-170.666667zM512 810.666667c-70.613333 0-128-57.386667-128-128s57.386667-128 128-128 128 57.386667 128 128-57.386667 128-128 128z m128-426.666667H213.333333v-170.666667h426.666667v170.666667z" p-id="5450"> -->
 				    		<i class="el-icon-delete-solid" 
 				    			style="margin-left:12px;font-size: 16px;color:#f56c6c"
-				    			@click="delHistory(i)"></i>
+				    			@click.stop="delHistory(i)"></i>
 				    	</div>
 			    	</div>
 			    </el-aside>
 			    <el-main>
 			    	<!-- @tab-click="collapseNames=['1', '2']" -->
 			    	<el-tabs 
-			    		v-show="tabs.length"
 			    		v-model="tabIndex" 
 			    		type="card" 
 			    		editable 
@@ -396,6 +413,9 @@
 			    </el-main>
 			  </el-container>
 			</el-container>
+			<div class="demo-btn" 
+				v-if="requestHistory.length===0"
+				@click="clickDemo">模拟</div>
 		</div>
 	</template>
 	<template id="json-view">
@@ -512,20 +532,46 @@
 	<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 	<script type="text/javascript">
 		!function() {
-			// ['Cookie', 'User-Agent', 'Content-Type', 'Host', 'Authorization', 
-			// 'Referer', 'Accept-Charset', 'Accept-Encoding', 'token']
+			// 模拟演示数据
+			var demo = {
+				name: 'Demo Api',
+				url: 'https://c.y.qq.com/musichall/fcgi-bin/fcg_yqqhomepagerecommend.fcg',
+				method: 'get',
+				paramType: 'params',
+				paramsTable: [
+					{key: '_', value: '1571116291987'},
+					{key: 'g_tk', value: '5381'},
+					{key: 'uin', value: '0'},
+					{key: 'format', value: 'json'},
+					{key: 'inCharset', value: 'utf-8'},
+					{key: 'outCharset', value: 'utf-8'},
+					{key: 'notice', value: '0'},
+					{key: 'platform', value: 'h5'},
+					{key: 'needNewCode', value: '1'},
+				],
+				headersTable: [],
+				paramItem: { key: '', value: '' },
+				headerItem: { key: '', value: '' },
+				jsonData: '',
+				loading: false
+			}
 
+			// 获取本地存储
 			function getStorage(key) {
 				return JSON.parse(localStorage.getItem(key))
 			}
+
+			// 设置本地存储
 			function setStorage(key, value) {
 				localStorage.setItem(key, JSON.stringify(value))
 			}
 
+			// 克隆对象
 			function cloneData(data) {
 				return JSON.parse(JSON.stringify(data))
 			}
 
+			// 新Tab
 			function newTab() {
 				return {
 					name: 'New Api',
@@ -542,6 +588,7 @@
 				}
 			}
 
+			// json数据显示组件
 			var JsonView = {
 			  template: '#json-view',
 			  name: 'jsonView',
@@ -689,32 +736,53 @@
 			    }
 			  }
 			}
+
+			// 主组件
 			var App = {
 				template: '#main',
 				components: { JsonView },
 				data() {
 					return {
-						requestHistory: getStorage('RH') || [],
-						tabs: [ newTab() ],
-						collapseNames: ['1', '2'],
-						historyIndex: -1,
-						tabIndex: '0'
+						requestHistory: getStorage('RH') || [],		// 历史记录
+						tabs: [ newTab() ],												// tab标签
+						collapseNames: ['1', '2'],								// 展开折叠面板的name列表
+						tabIndex: '0'															// tab标签name值(索引)
+					}
+				},
+				computed: {
+					// 当前历史记录索引
+					historyIndex() {
+						let {url} = this.tabs[this.tabIndex]
+						return this.requestHistory.findIndex(item => item.url === url)
 					}
 				},
 				filters: {
+					// 请求方式转大写
 					method2UpperCase(v) {
 						return v ? v.toUpperCase() : ''
 					},
+
+					// 处理长url的显示
 					handleTabTitle(v) {
 						if(!v) return ''
 						if(v.length <= 24) return v
 						return v.slice(0, 21) + '...'
 					}
 				},
-				created() {
-
-				},
+				
 				methods: {
+					// 点击模拟演示
+					clickDemo() {
+						this.requestHistory.push(demo)
+						let i = this.tabs.findIndex(t => t.url === demo.url)
+						if(i === -1) {
+							this.tabs.push(cloneData(demo))
+							this.tabIndex = String(this.tabs.length - 1)
+						}else {
+							this.tabIndex = String(i)
+						}
+					},
+
 					// 头部字段选择列表（ElementUI属性值）
 					headFields(query, cb) {
 						cb([
@@ -726,7 +794,6 @@
 
 					// 点击历史记录
 					historyClick(item, index) {
-						this.historyIndex = index
 						let i = this.tabs.findIndex(t => t.url === item.url)
 						if(i === -1) {
 							this.tabs.push(cloneData(item))
@@ -813,12 +880,15 @@
 					delHistory(i) {
 						this.requestHistory.splice(i, 1)
 						setStorage('RH', this.requestHistory)
+						let { url } = this.tabs[this.tabIndex]
+						// this.historyIndex = this.requestHistory.findIndex(item => item.url === url)
 					},
 
 					// 添加新请求(添加tab)
 					addTab() {
 						this.tabs.push(newTab())
 						this.tabIndex = String(this.tabs.length - 1)
+						// this.historyIndex = -1
 					},
 
 					// 删除tab菜单
@@ -868,10 +938,9 @@
 							location.port === '3002' ? '/proxy' : 'http://zengyuanqiu.xicp.io/proxy', 
 							options
 						).then(res => {
-								item.jsonData = res.data
-								item.loading = false
-							})
-							// .catch(err => item.jsonData = {err})
+							item.jsonData = res.data
+							item.loading = false
+						})
 					}
 				}
 			}
